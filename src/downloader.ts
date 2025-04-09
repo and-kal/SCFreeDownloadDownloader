@@ -3,6 +3,8 @@ import puppeteer from 'puppeteer';
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function downloadSongs(url: string) {
+  // this will not work, because SC will detect suspicious behaviour...
+  /*
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
 
@@ -12,6 +14,19 @@ async function downloadSongs(url: string) {
   // Wait for manual login
   console.log('Please log in to SoundCloud manually. You have 30 seconds...');
   await sleep(30000);
+  */
+  // ...thus using the user's Chrome installation, where they're already logged in
+  const browser = await puppeteer.launch({
+    headless: false,
+    executablePath: process.platform === 'win32'
+      ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+      : '/usr/bin/google-chrome',
+    userDataDir: process.platform === 'win32'
+      ? `${process.env.LOCALAPPDATA}\\Google\\Chrome\\User Data`
+      : `${process.env.HOME}/.config/google-chrome`,
+    args: ['--no-sandbox', '--profile-directory=Default']
+  });
+  const page = await browser.newPage();
 
   // Now navigate to the target URL
   await page.goto(url, { waitUntil: 'networkidle0' });
@@ -30,26 +45,38 @@ async function downloadSongs(url: string) {
 
     for (const button of moreButtons) {
       // Click "More" button
-      await button.click();
-      await sleep(500);
-
+      try {
+        await button.click().catch(() => { });
+        await sleep(500);
+      } catch (error) {
+        // TODO: Implement appropriate error handling logic
+        // @ts-ignore
+        console.log('Error processing button:', error.message);
+        continue;
+      }
       // Check if download button exists in dropdown
       const downloadButton = await page.$('button.sc-button-download');
       if (downloadButton) {
-        // Enable download behavior
-        const client = await page.createCDPSession()
-        await client.send('Page.setDownloadBehavior', {
-          behavior: 'allow',
-          downloadPath: './downloads'
-        });
-
-        await downloadButton.click();
+        try {
+          const client = await page.createCDPSession()
+          // Enable download behavior
+          await client.send('Page.setDownloadBehavior', {
+            behavior: 'allow',
+            downloadPath: './downloads'
+          });
+          await downloadButton.click().catch(() => { });
+          await sleep(1000); // Wait for download dialog
+        }
+        catch (error) {
+          console.error('An error occurred during the download:', error);
+          // TODO: Implement appropriate error handling logic
+        } finally {
+          await browser.close();
+        }
+        // Close dropdown by clicking outside
+        await page.mouse.click(0, 0);
       }
-
-      // Close dropdown by clicking outside
-      await page.mouse.click(0, 0);
     }
-
     // Check if we've reached the end (no new content loaded)
     const previousHeight = await page.evaluate('document.body.scrollHeight');
     await sleep(2000);
