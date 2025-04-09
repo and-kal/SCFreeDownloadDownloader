@@ -1,0 +1,20 @@
+{
+  "name": "soundcloud-downloader",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "download": "tsx src/downloader.ts"
+  },
+  "dependencies": {
+    "puppeteer": "^22.8.2"
+  },
+  "devDependencies": {
+    "tsx": "^3.13.0",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5"
+  }
+}
