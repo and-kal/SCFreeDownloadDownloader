@@ -28,66 +28,69 @@ async function downloadSongs(url: string) {
   });
   const page = await browser.newPage();
 
+
   // Now navigate to the target URL
   await page.goto(url, { waitUntil: 'networkidle0' });
+  try {
+    while (true) {
+      // Scroll to bottom to trigger lazy loading
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+      });
 
-  while (true) {
-    // Scroll to bottom to trigger lazy loading
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
+      // Wait for potential new content to load
+      await sleep(2000);
 
-    // Wait for potential new content to load
-    await sleep(2000);
+      // Find all "More" buttons
+      const moreButtons = await page.$$('button.sc-button-more');
 
-    // Find all "More" buttons
-    const moreButtons = await page.$$('button.sc-button-more');
-
-    for (const button of moreButtons) {
-      // Click "More" button
-      try {
-        await button.click().catch(() => { });
-        await sleep(500);
-      } catch (error) {
-        // TODO: Implement appropriate error handling logic
-        // @ts-ignore
-        console.log('Error processing button:', error.message);
-        continue;
-      }
-      // Check if download button exists in dropdown
-      const downloadButton = await page.$('button.sc-button-download');
-      if (downloadButton) {
+      for (const button of moreButtons) {
         try {
-          const client = await page.createCDPSession()
-          // Enable download behavior
-          await client.send('Page.setDownloadBehavior', {
-            behavior: 'allow',
-            downloadPath: './downloads'
-          });
-          await downloadButton.click().catch(() => { });
-          await sleep(1000); // Wait for download dialog
-        }
-        catch (error) {
-          console.error('An error occurred during the download:', error);
+          // Click "More" button
+          await button.click().catch(() => { });
+          await sleep(500);
+        } catch (error) {
           // TODO: Implement appropriate error handling logic
-        } finally {
-          await browser.close();
+          // @ts-ignore
+          console.log('Error processing button:', error.message);
+          continue;
         }
-        // Close dropdown by clicking outside
-        await page.mouse.click(0, 0);
+        // Check if download button exists in dropdown
+        const downloadButton = await page.$('button.sc-button-download');
+        if (downloadButton) {
+          try {
+            const client = await page.createCDPSession()
+            // Enable download behavior
+            await client.send('Page.setDownloadBehavior', {
+              behavior: 'allow',
+              downloadPath: './downloads'
+            });
+            await downloadButton.click().catch(() => { });
+            await sleep(1000); // Wait for download dialog
+          }
+          catch (error) {
+            console.error('An error occurred during the download:', error);
+            // TODO: Implement appropriate error handling logic
+          }
+          // Close dropdown by clicking outside
+          await page.mouse.click(0, 0);
+        }
+
+      }
+      // Check if we've reached the end (no new content loaded)
+      const previousHeight = await page.evaluate('document.body.scrollHeight');
+      await sleep(2000);
+      const currentHeight = await page.evaluate('document.body.scrollHeight');
+
+      if (previousHeight === currentHeight) {
+        break;
       }
     }
-    // Check if we've reached the end (no new content loaded)
-    const previousHeight = await page.evaluate('document.body.scrollHeight');
-    await sleep(2000);
-    const currentHeight = await page.evaluate('document.body.scrollHeight');
-
-    if (previousHeight === currentHeight) {
-      break;
-    }
+  } catch (error) {
+    console.error('An error occurred:', error);
+  } finally {
+    await browser.close();
   }
-
-  await browser.close();
 }
 
 // Start the download process
