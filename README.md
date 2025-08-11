@@ -1,4 +1,4 @@
-# A couple of tools for doing bulk stuff on soundCloud pages
+# A couple of tools for doing bulk stuff on SoundCloud pages
 
 ## downloader 
 
