@@ -22,14 +22,12 @@ async function downloadSongs(url: string) {
       ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
       : '/usr/bin/google-chrome',
     userDataDir: process.platform === 'win32'
-      ? `${process.env.LOCALAPPDATA}\\Google\\Chrome\\User Data`
+      ? `${process.env.LOCALAPPDATA}\\Google\\Chrome\\User\ Data\\Default`
       : `${process.env.HOME}/.config/google-chrome`,
-    args: ['--no-sandbox', '--profile-directory=Default']
+    args: ['--no-sandbox', '--profile-directory=Default'],
   });
   const page = await browser.newPage();
-
-  // Now navigate to the target URL
-  await page.goto(url, { waitUntil: 'networkidle0' });
+  await page.goto(url, { waitUntil: 'load', timeout: 0 });
   try {
     while (true) {
       // Scroll to bottom to trigger lazy loading

@@ -3,20 +3,37 @@ import puppeteer from 'puppeteer';
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 async function followPages(url: string) {
+  const userDataDir =
+    process.platform === 'win32'
+      ? `${process.env.LOCALAPPDATA}\\Chromium\\User\ Data`
+      : `${process.env.HOME}/.config/google-chrome`;
   const browser = await puppeteer.launch({
     headless: false,
     executablePath: process.platform === 'win32'
-      ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+      ? 'C:\\Program Files\\chrome-win\\chrome.exe'
       : '/usr/bin/google-chrome',
-    userDataDir: process.platform === 'win32'
-      ? `${process.env.LOCALAPPDATA}\\Google\\Chrome\\User Data`
-      : `${process.env.HOME}/.config/google-chrome`,
-    args: ['--no-sandbox', '--profile-directory=Default']
+    // if you encounter errors, check if user data directory is correct via `chrome://version` in Chrome/Chromium
+    userDataDir: userDataDir,
+    args: [
+      '--no-sandbox',
+      '--profile-directory=Profile\ 1',
+      '--disable-extensions'
+    ],
+    // dumpio: true,
   });
   const page = await browser.newPage();
-
-  // Now navigate to the target URL
-  await page.goto(url, { waitUntil: 'networkidle0' });
+  page.setDefaultNavigationTimeout(0);
+  await page.setRequestInterception(true);
+  page.on('request', request => {
+    // prevent redirecting away
+    if (
+      (request.isNavigationRequest() && request.redirectChain().length)
+    )
+      request.abort();
+    else
+      request.continue();
+  });
+  await page.goto(url, { waitUntil: 'networkidle2' });
   try {
     while (true) {
       // Scroll to bottom to trigger lazy loading
@@ -25,9 +42,9 @@ async function followPages(url: string) {
       });
 
       // Wait for potential new content to load
-      await sleep(2000);
+      await sleep(6000);
 
-      const moreButtons = await page.$$('button.sc-button-follow');
+      const moreButtons = await page.$$('button.sc-button-follow[title="Follow"]');
 
       for (const button of moreButtons) {
         try {
