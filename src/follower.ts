@@ -2,20 +2,7 @@ import puppeteer from 'puppeteer';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-async function downloadSongs(url: string) {
-  // this will not work, because SC will detect suspicious behaviour...
-  /*
-  const browser = await puppeteer.launch({ headless: false });
-  const page = await browser.newPage();
-
-  // Go to SoundCloud first
-  await page.goto('https://soundcloud.com', { waitUntil: 'networkidle0' });
-
-  // Wait for manual login
-  console.log('Please log in to SoundCloud manually. You have 30 seconds...');
-  await sleep(30000);
-  */
-  // ...thus, using the user's Chrome installation, where they're already logged in
+async function followPages(url: string) {
   const browser = await puppeteer.launch({
     headless: false,
     executablePath: process.platform === 'win32'
@@ -40,7 +27,7 @@ async function downloadSongs(url: string) {
       // Wait for potential new content to load
       await sleep(2000);
 
-      const moreButtons = await page.$$('button.sc-button-more');
+      const moreButtons = await page.$$('button.sc-button-follow');
 
       for (const button of moreButtons) {
         try {
@@ -52,26 +39,6 @@ async function downloadSongs(url: string) {
           console.log('Error processing button:', error.message);
           continue;
         }
-        // Check if download button exists in dropdown
-        const downloadButton = await page.$('button.sc-button-download');
-        if (downloadButton) {
-          try {
-            const client = await page.createCDPSession()
-            await client.send('Page.setDownloadBehavior', {
-              behavior: 'allow',
-              downloadPath: './downloads'
-            });
-            await downloadButton.click().catch(() => { });
-            await sleep(1000); // Wait for download dialog
-          }
-          catch (error) {
-            console.error('An error occurred during the download:', error);
-            // TODO: Implement appropriate error handling logic
-          }
-          // Close dropdown by clicking outside
-          await page.mouse.click(0, 0);
-        }
-
       }
       // Check if we've reached the end (no new content loaded)
       const previousHeight = await page.evaluate('document.body.scrollHeight');
@@ -91,4 +58,4 @@ async function downloadSongs(url: string) {
 
 // Start the download process
 const soundcloudUrl = process.argv[2];
-downloadSongs(soundcloudUrl);
+followPages(soundcloudUrl);

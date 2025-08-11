@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "download": "tsx src/downloader.ts"
+    "download": "tsx src/downloader.ts",
+    "follow": "tsx src/follower.ts"
   },
   "dependencies": {
     "puppeteer": "^22.8.2"
